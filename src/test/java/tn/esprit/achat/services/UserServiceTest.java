@@ -1,25 +1,26 @@
-@Test
-public void testRetrieveUser() {
-    // Arrange
-    User mockUser = new User("Bob");
-    when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser));
+package tn.esprit.achat.services;
 
-    // Act
-    User retrievedUser = userService.retrieveUser(1L);
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import tn.esprit.achat.entities.User;
+import tn.esprit.achat.repositories.UserRepository;
+import tn.esprit.achat.services.UserServiceImpl;
 
-    // Assert
-    assertEquals("Bob", retrievedUser.getName());
-    verify(userRepository, times(1)).findById(1L);
-}
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-@Test
-public void testDeleteUser() {
-    // Arrange
-    doNothing().when(userRepository).deleteById(1L);
+@ExtendWith(MockitoExtension.class)
+public class UserServiceTest {
 
-    // Act
-    userService.deleteUser(1L);
+    @Mock
+    private UserRepository userRepository;
 
-    // Assert
-    verify(userRepository, times(1)).deleteById(1L);
-}
+    @InjectMocks
+    private UserServiceImpl userService;
+
+    @Test
+    public void testAddUser() {
+        // Arrange
