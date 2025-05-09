@@ -24,3 +24,30 @@ public class UserServiceTest {
     @Test
     public void testAddUser() {
         // Arrange
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("testuser");
+        
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        
+        // Act
+        User savedUser = userService.addUser(user);
+        
+        // Assert
+        assertNotNull(savedUser);
+        assertEquals("testuser", savedUser.getUsername());
+        verify(userRepository, times(1)).save(user);
+    }
+    
+    @Test
+    public void testUpdateUser() {
+        // Add your update test implementation here
+    }
+    
+    @Test
+    public void testDeleteUser() {
+        // Add your delete test implementation here
+    }
+    
+    // Add more test methods as needed
+}
