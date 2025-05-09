@@ -7,7 +7,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tn.esprit.achat.entities.User;
 import tn.esprit.achat.repositories.UserRepository;
-import tn.esprit.achat.services.UserServiceImpl;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -38,16 +37,40 @@ public class UserServiceTest {
         assertEquals("testuser", savedUser.getUsername());
         verify(userRepository, times(1)).save(user);
     }
-    
+
     @Test
-    public void testUpdateUser() {
-        // Add your update test implementation here
+    public void testFindUserById() {
+        // Arrange
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("existinguser");
+        
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        
+        // Act
+        User foundUser = userService.findUserById(1L);
+        
+        // Assert
+        assertNotNull(foundUser);
+        assertEquals("existinguser", foundUser.getUsername());
     }
-    
+
     @Test
     public void testDeleteUser() {
-        // Add your delete test implementation here
+        // Arrange
+        Long userId = 1L;
+        doNothing().when(userRepository).deleteById(userId);
+        
+        // Act
+        userService.deleteUser(userId);
+        
+        // Assert
+        verify(userRepository, times(1)).deleteById(userId);
     }
-    
-    // Add more test methods as needed
+}
+
+// If you need the mock test implementation as well, you can add it here:
+class UserServiceImplMockTest {
+    // Your mock test implementation would go here
+    // But typically you'd want this in a separate file
 }
