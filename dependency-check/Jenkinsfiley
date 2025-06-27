@@ -1,0 +1,128 @@
+pipeline {
+    agent any
+    stages {
+        stage('Git') {
+            steps {
+                git branch: 'master',
+                url :'https://github.com/Sondeshafsi/tp-foyer';
+            }
+        }
+
+        stage('Maven Clean') {
+            steps {
+                echo 'Nettoyage du Projet : ';
+                sh 'mvn clean';
+            }
+        }
+
+        stage('Maven Compile') {
+            steps {
+                echo 'Construction du Projet : ';
+                sh 'mvn compile';
+            }
+        }
+
+        stage('SonarQue') {
+            steps {
+                echo 'Analyse de la Qualité du Code : ';
+                sh 'mvn sonar:sonar -Dsonar.token=squ_7da0db26024f3fdd37eb5177614218fe7160c3f8';
+            }
+        }
+
+        stage('NEXUS') {
+            steps {
+                sh 'mvn deploy -DskipTests';
+            }
+        }
+
+        stage('Maven Package') {
+            steps {
+                echo 'Création du livrable : ';
+                sh 'mvn package -DskipTests';
+            }
+        }
+
+        stage('Image') {
+            steps {
+                echo 'Création Image : ';
+                sh 'sudo docker build -t sondeshafsi1/tp-foyer:1.0.0 /home/vagrant/docker';
+            }
+        }
+
+        stage('Security Scan - Trivy & Dockle') {
+            steps {
+                echo 'Running Trivy and Dockle security checks...'
+                sh '''
+                # Install Trivy if not present
+                if ! command -v trivy >/dev/null; then
+                    echo "Installing Trivy..."
+                    wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.deb
+                    sudo dpkg -i trivy_0.50.1_Linux-64bit.deb
+                fi
+
+                # Install Dockle if not present
+                if ! command -v dockle >/dev/null; then
+                    echo "Installing Dockle..."
+                    curl -sL https://github.com/goodwithtech/dockle/releases/latest/download/dockle_0.4.14_Linux-64bit.tar.gz | tar xz
+                    sudo mv dockle /usr/local/bin/
+                fi
+
+                # Run Trivy scan
+                trivy image --severity CRITICAL,HIGH,MEDIUM sondeshafsi1/tp-foyer:1.0.0 > trivy-report.txt
+
+                # Run Dockle scan
+                dockle -f json -o dockle-report.json sondeshafsi1/tp-foyer:1.0.0
+                '''
+                archiveArtifacts artifacts: 'trivy-report.txt, dockle-report.json', allowEmptyArchive: true
+            }
+        }
+
+        stage('Security Scan - docker-bench-security') {
+            steps {
+                echo 'Running docker-bench-security scan...'
+                sh '''
+                    if [ ! -d "docker-bench-security" ]; then
+                      git clone https://github.com/docker/docker-bench-security.git
+                    else
+                      cd docker-bench-security && git pull && cd ..
+                    fi
+
+                    sudo sh docker-bench-security/docker-bench-security.sh -l docker-bench-report.log
+
+                    if grep -q "\\[FAIL\\]" docker-bench-report.log; then
+                      echo "Critical vulnerabilities found in docker-bench-security scan!"
+                      cat docker-bench-report.log
+                      exit 1
+                    fi
+                '''
+                archiveArtifacts artifacts: 'docker-bench-report.log', allowEmptyArchive: false
+            }
+        }
+
+        stage('Dockerhub') {
+            steps {
+                echo 'Push Image to dockerhub : ';
+                sh 'sudo docker login -u sondeshafsi1 -p Add8e9eyes//';
+                sh 'sudo docker push sondeshafsi1/tp-foyer:1.0.0';
+            }
+        }
+
+        stage('Docker-Compose') {
+            steps {
+                echo 'Start Backend + DB : ';
+                sh '''
+                    echo "Stopping any existing containers..."
+                    sudo docker stop docker-app-1 || true
+                    sudo docker rm docker-app-1 || true
+
+                    echo "Running container on port 8090..."
+                    sudo docker run -d --name docker-app-1 -p 8090:8080 sondeshafsi1/tp-foyer:1.0.0
+
+                    echo "Container started successfully on port 8090"
+                    sudo docker ps
+                '''
+            }
+        }
+    }
+}
+	
